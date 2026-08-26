@@ -2,6 +2,7 @@ import re
 import sys
 import json
 import random
+import string
 import requests
 
 import concurrent.futures
@@ -57,7 +58,12 @@ def populate(array):
     converts a list of parameters into parameter and value pair
     returns dict
     """
-    return {name: '1' * (6 - len(str(i))) + str(i) for i, name in enumerate(array)}
+    # Non-numeric probe values: a numeric value (e.g. 111234) is a VALID CFML/JS
+    # expression and a valid integer, so eval()/evaluate()/numeric-cast injection
+    # sinks accept it and return 200 -- making such params invisible. A value with
+    # letters (z + 5-digit index, still 6 chars for reflection detection) makes the
+    # sink error instead, surfacing the param. See github.com/chudamax/Arjun.
+    return {name: 'z' + str(i).zfill(5) for i, name in enumerate(array)}
 
 
 def stable_request(url, headers):
@@ -111,9 +117,9 @@ def diff_map(body_1, body_2):
 def random_str(n):
     """
     generates a random string of length n
-    returns a string containing only digits
+    returns an alphanumeric string (letters+digits)
     """
-    return ''.join(str(random.choice(range(10))) for i in range(n))
+    return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
 
 
 def get_params(include):
